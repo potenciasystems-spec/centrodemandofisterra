@@ -1,0 +1,1638 @@
+<!DOCTYPE html>
+<html lang="es" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Centro de Mando // Fisterra Energy</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        fisterra: {
+                            navy: '#0A192F',
+                            navyLight: '#0D223A',
+                            emerald: '#00A878',
+                            cyan: '#0077B6',
+                            charcoal: '#1E293B',
+                            slateText: '#334155',
+                            mist: '#F8FAFC',
+                            surface: '#F1F5F9',
+                            border: '#CBD5E1'
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['"Plus Jakarta Sans"', 'Inter', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Google Fonts: Plus Jakarta Sans & Inter (Neo-Grotesque / Geometric Sans) -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Plus Jakarta Sans', 'Inter', sans-serif;
+            background-color: #FFFFFF;
+            color: #1E293B;
+        }
+        .tabular-nums {
+            font-variant-numeric: tabular-nums;
+        }
+        /* Smooth sidebar transition */
+        #mainSidebar {
+            transition: width 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .sidebar-collapsed {
+            width: 4.5rem !important;
+        }
+        .sidebar-collapsed .nav-label,
+        .sidebar-collapsed .nav-section-title,
+        .sidebar-collapsed .sidebar-badge,
+        .sidebar-collapsed .sidebar-footer-details {
+            display: none;
+        }
+        .sidebar-collapsed .nav-btn {
+            justify-content: center;
+            padding-left: 0;
+            padding-right: 0;
+        }
+    </style>
+</head>
+<body class="bg-white text-fisterra-charcoal h-full flex flex-col overflow-hidden">
+
+    <!-- TOP HEADER BAR (Institutional Deep Navy #0A192F) -->
+    <header class="bg-fisterra-navy text-white border-b border-slate-800 px-4 lg:px-6 py-3.5 flex flex-wrap items-center justify-between gap-4 z-30 flex-shrink-0">
+        <div class="flex items-center space-x-4">
+            <!-- Sidebar Collapse Toggle Button -->
+            <button onclick="toggleSidebar()" title="Retraer / Expandir menú lateral" class="p-2 rounded-lg text-slate-300 hover:text-white hover:bg-fisterra-navyLight border border-slate-700/70 transition-colors hidden md:flex items-center justify-center">
+                <i data-lucide="panel-left" class="w-4 h-4" id="sidebarToggleIcon"></i>
+            </button>
+
+            <!-- Brand Identity: ONLY "Centro de Mando" and "Fisterra Energy" -->
+            <div class="leading-tight">
+                <h1 class="font-bold text-base tracking-[-0.02em] text-white">Centro de Mando</h1>
+                <p class="text-xs font-medium text-slate-300 tracking-wide">Fisterra Energy</p>
+            </div>
+
+            <!-- Global Project Selector -->
+            <div class="flex items-center bg-fisterra-navyLight rounded-lg px-2.5 py-1.5 border border-slate-700/80 ml-2">
+                <span class="text-[11px] text-slate-400 pr-2 font-medium uppercase tracking-wider hidden sm:inline">Proyecto:</span>
+                <select id="globalProjectSelect" onchange="switchProject(this.value)" class="bg-transparent text-xs text-white font-semibold focus:outline-none cursor-pointer">
+                    <option value="todos" class="bg-fisterra-navy text-white">Todos los Proyectos (3 Plantas)</option>
+                    <option value="cerro_colorado" class="bg-fisterra-navy text-white">Cerro Colorado (Sayula de Alemán)</option>
+                    <option value="haab_kiin" class="bg-fisterra-navy text-white">Haab Kiin (Yucatán)</option>
+                    <option value="san_simon" class="bg-fisterra-navy text-white">San Simón (San Quintín)</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- Global Search Bar (Módulo B) -->
+        <div class="relative flex-1 max-w-md hidden xl:block" id="topGlobalSearchContainer">
+            <i data-lucide="search" class="w-4 h-4 absolute left-3 top-2.5 text-slate-400"></i>
+            <input type="text" id="topSearchInput" onkeyup="handleTopSearch(this.value)" placeholder="Buscador Global 360°: Nombre, Teléfono, CURP o RFC..." class="w-full bg-fisterra-navyLight border border-slate-700 rounded-lg pl-9 pr-4 py-1.5 text-xs text-white placeholder-slate-400 focus:outline-none focus:border-fisterra-cyan transition-colors">
+        </div>
+
+        <!-- Session Actions & Notifications -->
+        <div class="flex items-center space-x-3">
+            <!-- Cerrar Sesión (único control de sesión dentro del panel) -->
+            <button onclick="logout()" title="Cerrar sesión" class="flex items-center gap-1.5 bg-fisterra-navyLight hover:bg-slate-800 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-slate-200 transition-colors">
+                <i data-lucide="log-out" class="w-3.5 h-3.5 text-fisterra-emerald"></i>
+                <span class="hidden sm:inline">Cerrar Sesión</span>
+            </button>
+
+            <!-- Notifications Bell with Dropdown -->
+            <div class="relative">
+                <button onclick="toggleNotificationsPanel()" class="p-2 bg-fisterra-navyLight hover:bg-slate-800 border border-slate-700 rounded-lg relative text-slate-200 transition-colors">
+                    <i data-lucide="bell" class="w-4 h-4"></i>
+                    <span id="notifBadgeCount" class="absolute -top-1.5 -right-1.5 px-1.5 py-0.2 bg-fisterra-emerald text-white text-[10px] font-bold rounded-full">2</span>
+                </button>
+                <!-- Dropdown Panel -->
+                <div id="notificationsPanel" class="hidden absolute right-0 mt-2 w-80 sm:w-96 bg-white border border-fisterra-border rounded-xl shadow-2xl z-50 overflow-hidden text-fisterra-charcoal">
+                    <div class="p-3 bg-fisterra-navy text-white flex items-center justify-between">
+                        <span class="text-xs font-semibold flex items-center gap-1.5">
+                            <i data-lucide="bell-ring" class="w-3.5 h-3.5 text-fisterra-emerald"></i> Centro de Aprobaciones
+                        </span>
+                        <span class="text-[10px] text-slate-300">Amellaly / Hilario</span>
+                    </div>
+                    <div id="notificationsList" class="max-h-72 overflow-y-auto divide-y divide-slate-200 text-xs">
+                        <!-- Populated by JS -->
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex items-center space-x-2.5 border-l border-slate-700 pl-3">
+                <div class="w-8 h-8 rounded-lg bg-fisterra-cyan text-white flex items-center justify-center font-bold text-xs" id="userAvatar">
+                    AG
+                </div>
+                <div class="hidden lg:block text-left">
+                    <p class="text-xs font-semibold text-white" id="userNameLabel">Ing. Amellaly Garza</p>
+                    <p class="text-[10px] text-fisterra-emerald font-medium" id="userRoleLabel">Directora de Operaciones</p>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- MAIN APP LAYOUT -->
+    <div class="flex flex-1 overflow-hidden bg-white">
+
+        <!-- COLLAPSIBLE LEFT SIDEBAR NAVIGATION (60% Light Neutral / Architectural Precision) -->
+        <aside class="w-64 bg-fisterra-mist border-r border-fisterra-border flex flex-col justify-between flex-shrink-0 z-10 hidden md:flex" id="mainSidebar">
+            <nav class="p-3.5 space-y-1.5">
+                <p class="nav-section-title text-[10px] uppercase tracking-[0.06em] text-slate-500 font-semibold px-3 mb-2">Módulos Operativos</p>
+                
+                <button onclick="switchTab('dashboard')" id="nav-dashboard" title="Módulo A: Cockpit Directivo" class="nav-btn w-full flex items-center space-x-3 px-3 py-2.5 rounded-lg text-xs font-semibold transition-all bg-fisterra-navy text-white shadow-sm">
+                    <i data-lucide="layout-dashboard" class="w-4 h-4 flex-shrink-0 text-fisterra-emerald"></i>
+                    <span class="nav-label truncate">Módulo A: Cockpit Directivo</span>
+                </button>
+
+                <button onclick="switchTab('expediente')" id="nav-expediente" title="Módulo B: Expediente 360°" class="nav-btn w-full flex items-center space-x-3 px-3 py-2.5 rounded-lg text-xs font-medium text-fisterra-slateText hover:bg-slate-200/70 hover:text-fisterra-navy transition-all">
+                    <i data-lucide="folder-search" class="w-4 h-4 flex-shrink-0"></i>
+                    <span class="nav-label truncate">Módulo B: Expediente 360°</span>
+                </button>
+
+                <button onclick="switchTab('subcontratistas')" id="nav-subcontratistas" title="Módulo C: Control La Joya" class="nav-btn w-full flex items-center space-x-3 px-3 py-2.5 rounded-lg text-xs font-medium text-fisterra-slateText hover:bg-slate-200/70 hover:text-fisterra-navy transition-all">
+                    <i data-lucide="lock" class="w-4 h-4 flex-shrink-0"></i>
+                    <span class="nav-label truncate">Módulo C: "La Joya"</span>
+                    <span class="sidebar-badge ml-auto bg-fisterra-cyan/10 text-fisterra-cyan text-[10px] font-bold px-1.5 py-0.5 rounded border border-fisterra-cyan/20">RBAC</span>
+                </button>
+            </nav>
+
+            <!-- Bottom System Status -->
+            <div class="p-3.5 border-t border-fisterra-border bg-fisterra-surface/60">
+                <div class="bg-white rounded-lg p-3 border border-fisterra-border space-y-2 sidebar-footer-details">
+                    <div class="flex items-center justify-between text-[11px]">
+                        <span class="text-slate-600 font-medium flex items-center gap-1.5">
+                            <span class="w-2 h-2 rounded-full bg-fisterra-emerald"></span> Sync Odoo API
+                        </span>
+                        <span class="text-fisterra-emerald font-semibold tabular-nums text-[10px]">OK (12ms)</span>
+                    </div>
+                    <div class="flex items-center justify-between text-[11px]">
+                        <span class="text-slate-600 font-medium">PostgreSQL SSOT</span>
+                        <span class="text-fisterra-navy font-semibold text-[10px]">Activo</span>
+                    </div>
+                    <div class="pt-1.5 border-t border-slate-200 flex items-center justify-between text-[11px] text-slate-600">
+                        <span>Seguridad PII / SAT</span>
+                        <span class="text-fisterra-cyan font-bold">2FA</span>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- CONTENT AREA (Pure White #FFFFFF Canvas) -->
+        <main class="flex-1 overflow-y-auto bg-white p-5 lg:p-8 relative" id="mainContentArea">
+
+            <!-- Mobile Navigation Pills -->
+            <div class="flex md:hidden gap-2 mb-5 overflow-x-auto pb-1">
+                <button onclick="switchTab('dashboard')" class="px-3 py-1.5 bg-fisterra-navy text-white rounded-lg text-xs font-semibold whitespace-nowrap">Cockpit</button>
+                <button onclick="switchTab('expediente')" class="px-3 py-1.5 bg-fisterra-surface text-fisterra-navy border border-fisterra-border rounded-lg text-xs font-semibold whitespace-nowrap">Expediente 360°</button>
+                <button onclick="switchTab('subcontratistas')" class="px-3 py-1.5 bg-fisterra-surface text-fisterra-navy border border-fisterra-border rounded-lg text-xs font-semibold whitespace-nowrap">"La Joya"</button>
+            </div>
+
+            <!-- ================= MODULE A: DASHBOARD DIRECTIVO ================= -->
+            <section id="tab-dashboard" class="space-y-6">
+                <!-- Executive Header Block -->
+                <div class="bg-fisterra-mist p-6 rounded-xl border border-fisterra-border flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
+                    <div>
+                        <div class="flex flex-wrap items-center gap-2 mb-1.5">
+                            <span class="bg-fisterra-navy text-white text-[11px] px-2.5 py-0.5 rounded font-semibold tracking-wide uppercase" id="currentProjectBadge">Todos los Proyectos (3 Plantas)</span>
+                            <span class="text-slate-500 text-xs font-medium">• Única Fuente de la Verdad (PostgreSQL)</span>
+                        </div>
+                        <h2 class="text-xl lg:text-2xl font-semibold text-fisterra-navy tracking-[-0.01em] leading-[1.25]" id="dashboardTitle">Cockpit Ejecutivo & Semáforo de Riesgo</h2>
+                        <p class="text-xs lg:text-sm text-fisterra-slateText mt-1 leading-relaxed">Visibilidad operativa en tiempo real de fuerza laboral y proveedores acreditados en infraestructura energética.</p>
+                    </div>
+                    <div class="flex flex-wrap items-center gap-2.5">
+                        <!-- Toggle Trabajadores vs Proveedores -->
+                        <div class="bg-white p-1 rounded-lg border border-fisterra-border flex text-xs shadow-sm">
+                            <button onclick="setEntityFilter('todos')" id="btn-ent-todos" class="px-3 py-1.5 rounded-md bg-fisterra-navy text-white font-semibold transition-all">Todos</button>
+                            <button onclick="setEntityFilter('trabajador')" id="btn-ent-trabajador" class="px-3 py-1.5 rounded-md text-fisterra-slateText hover:text-fisterra-navy font-semibold transition-all">Trabajadores</button>
+                            <button onclick="setEntityFilter('proveedor')" id="btn-ent-proveedor" class="px-3 py-1.5 rounded-md text-fisterra-slateText hover:text-fisterra-navy font-semibold transition-all">Proveedores</button>
+                        </div>
+                        <button onclick="showToast('Reporte ejecutivo PDF con auditoría generado')" class="px-3.5 py-2 bg-white hover:bg-fisterra-surface text-fisterra-navy text-xs font-semibold rounded-lg border border-fisterra-border flex items-center gap-1.5 transition-all shadow-sm">
+                            <i data-lucide="file-text" class="w-4 h-4 text-fisterra-cyan"></i> Exportar PDF
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Risk Alert Banner (Dynamic based on >48h pending threshold) -->
+                <div id="riskAlertBanner" class="hidden bg-rose-50 border border-rose-300 p-4 rounded-xl flex items-center justify-between gap-4">
+                    <div class="flex items-center gap-3">
+                        <div class="p-2.5 bg-rose-100 text-rose-700 rounded-lg">
+                            <i data-lucide="alert-triangle" class="w-5 h-5"></i>
+                        </div>
+                        <div>
+                            <h4 class="text-sm font-bold text-rose-900" id="riskAlertTitle">Alerta de Semáforo de Riesgo: Cuello de Botella Operativo</h4>
+                            <p class="text-xs text-rose-700" id="riskAlertDesc">Este proyecto supera el umbral de solicitudes pendientes de revisión por más de 48 horas.</p>
+                        </div>
+                    </div>
+                    <button onclick="switchTab('expediente')" class="px-4 py-2 bg-rose-700 hover:bg-rose-800 text-white text-xs font-semibold rounded-lg whitespace-nowrap transition-colors">
+                        Revisar Pendientes
+                    </button>
+                </div>
+
+                <!-- KPIs Cards Row (Tabular Numbers & Clean Architectural Surfaces) -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <!-- KPI 1 -->
+                    <div class="bg-fisterra-mist border border-fisterra-border p-5 rounded-xl relative overflow-hidden hover:border-fisterra-cyan transition-all">
+                        <div class="flex items-center justify-between">
+                            <p class="text-[11px] font-semibold text-slate-500 uppercase tracking-[0.05em]">Total Registrados (SSOT)</p>
+                            <div class="bg-white border border-slate-200 p-2 rounded-lg text-fisterra-navy">
+                                <i data-lucide="users" class="w-4 h-4"></i>
+                            </div>
+                        </div>
+                        <div class="flex items-baseline gap-2 mt-2">
+                            <h3 class="text-3xl font-bold text-fisterra-navy tabular-nums" id="kpiTotalRegistrados">2,845</h3>
+                            <span class="text-[11px] text-slate-500 font-medium" id="kpiSubBreakdown">(2,610 Trab / 235 Prov)</span>
+                        </div>
+                        <div class="mt-3 flex items-center text-xs text-fisterra-emerald font-semibold">
+                            <i data-lucide="arrow-up-right" class="w-3.5 h-3.5 mr-1"></i> Captación directa Capa 1
+                        </div>
+                    </div>
+
+                    <!-- KPI 2: Embudo de Conversión -->
+                    <div class="bg-fisterra-mist border border-fisterra-border p-5 rounded-xl relative overflow-hidden hover:border-fisterra-cyan transition-all">
+                        <div class="flex items-center justify-between">
+                            <p class="text-[11px] font-semibold text-slate-500 uppercase tracking-[0.05em]">Conversión: Reg ➔ Apto ➔ Cont</p>
+                            <div class="bg-white border border-slate-200 p-2 rounded-lg text-fisterra-cyan">
+                                <i data-lucide="filter" class="w-4 h-4"></i>
+                            </div>
+                        </div>
+                        <h3 class="text-2xl font-bold text-fisterra-navy mt-2.5 tabular-nums" id="kpiConversionFunnel">100% ➔ 68% ➔ 24%</h3>
+                        <div class="mt-3 flex items-center text-xs text-fisterra-cyan font-semibold" id="kpiConversionDetail">
+                            1,944 Aptos • 682 Contratados
+                        </div>
+                    </div>
+
+                    <!-- KPI 3: Pendientes > 48h -->
+                    <div class="bg-fisterra-mist border border-fisterra-border p-5 rounded-xl relative overflow-hidden hover:border-fisterra-cyan transition-all">
+                        <div class="flex items-center justify-between">
+                            <p class="text-[11px] font-semibold text-slate-500 uppercase tracking-[0.05em]">Pendientes > 48 Horas</p>
+                            <div class="bg-white border border-slate-200 p-2 rounded-lg text-amber-600">
+                                <i data-lucide="clock" class="w-4 h-4"></i>
+                            </div>
+                        </div>
+                        <div class="flex items-baseline gap-2 mt-2">
+                            <h3 class="text-3xl font-bold text-fisterra-navy tabular-nums" id="kpiPendientes48">18</h3>
+                            <span class="text-xs text-slate-500 font-medium">/ Umbral máx: 15</span>
+                        </div>
+                        <div class="mt-3 flex items-center text-xs text-slate-600 font-medium">
+                            SLA de validación SAT / RENAPO
+                        </div>
+                    </div>
+
+                    <!-- KPI 4: Semáforo de Riesgo -->
+                    <div class="bg-fisterra-mist border border-fisterra-border p-5 rounded-xl relative overflow-hidden transition-all" id="kpiSemaforoCard">
+                        <div class="flex items-center justify-between">
+                            <p class="text-[11px] font-semibold text-slate-500 uppercase tracking-[0.05em]">Semáforo de Riesgo</p>
+                            <div class="bg-white border border-slate-200 p-2 rounded-lg text-fisterra-navy">
+                                <i data-lucide="activity" class="w-4 h-4"></i>
+                            </div>
+                        </div>
+                        <h3 class="text-lg font-bold text-rose-700 mt-3 flex items-center gap-2" id="kpiSemaforoText">
+                            <span class="w-2.5 h-2.5 rounded-full bg-rose-600"></span> Riesgo Alto (>48 hrs)
+                        </h3>
+                        <div class="mt-3 flex items-center text-xs text-slate-600 font-medium" id="kpiSemaforoSub">
+                            Cerro Colorado requiere validación
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Charts Section -->
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <!-- Donut Chart: Estatus -->
+                    <div class="bg-white border border-fisterra-border p-5 rounded-xl flex flex-col justify-between shadow-sm">
+                        <div class="flex items-center justify-between mb-3">
+                            <h4 class="text-sm font-semibold text-fisterra-navy flex items-center gap-2">
+                                <i data-lucide="pie-chart" class="w-4 h-4 text-fisterra-emerald"></i> Estatus de Validaciones
+                            </h4>
+                            <span class="text-[11px] text-slate-400 font-medium">Tiempo Real</span>
+                        </div>
+                        <div class="relative h-56 flex items-center justify-center">
+                            <canvas id="statusDonutChart"></canvas>
+                        </div>
+                        <div class="grid grid-cols-2 gap-2 mt-4 pt-3 border-t border-slate-200 text-xs text-fisterra-slateText tabular-nums" id="donutLegend">
+                            <!-- Updated by JS -->
+                        </div>
+                    </div>
+
+                    <!-- Bar Chart: Demanda por Oficio / Giro -->
+                    <div class="bg-white border border-fisterra-border p-5 rounded-xl flex flex-col justify-between shadow-sm">
+                        <div class="flex items-center justify-between mb-3">
+                            <h4 class="text-sm font-semibold text-fisterra-navy flex items-center gap-2" id="barChartTitle">
+                                <i data-lucide="bar-chart-3" class="w-4 h-4 text-fisterra-cyan"></i> Demanda por Oficio / Giro
+                            </h4>
+                            <span class="text-[11px] text-slate-400 font-medium">Top 5</span>
+                        </div>
+                        <div class="relative h-56 flex items-center justify-center">
+                            <canvas id="tradesBarChart"></canvas>
+                        </div>
+                        <p class="text-[11px] text-slate-500 mt-4 pt-3 border-t border-slate-200 text-center" id="barChartFooter">
+                            Distribución de especialidades requeridas en infraestructura.
+                        </p>
+                    </div>
+
+                    <!-- Line Chart: Curva de Registros -->
+                    <div class="bg-white border border-fisterra-border p-5 rounded-xl flex flex-col justify-between shadow-sm">
+                        <div class="flex items-center justify-between mb-3">
+                            <h4 class="text-sm font-semibold text-fisterra-navy flex items-center gap-2">
+                                <i data-lucide="trending-up" class="w-4 h-4 text-fisterra-emerald"></i> Curva de Registros
+                            </h4>
+                            <div class="bg-fisterra-mist p-0.5 rounded-lg border border-fisterra-border flex text-[10px]">
+                                <button onclick="toggleTimeScale('semana')" id="btn-time-semana" class="px-2.5 py-0.5 rounded bg-fisterra-navy text-white font-semibold">Semana</button>
+                                <button onclick="toggleTimeScale('dia')" id="btn-time-dia" class="px-2.5 py-0.5 rounded text-slate-600 hover:text-fisterra-navy font-semibold">Día</button>
+                            </div>
+                        </div>
+                        <div class="relative h-56 flex items-center justify-center">
+                            <canvas id="registrationsLineChart"></canvas>
+                        </div>
+                        <p class="text-[11px] text-slate-500 mt-4 pt-3 border-t border-slate-200 text-center">
+                            Ingresos verificados desde Capa 1 (WhatsApp Bot).
+                        </p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ================= MODULE B: EXPEDIENTE 360 ================= -->
+            <section id="tab-expediente" class="space-y-6 hidden">
+                <div class="bg-fisterra-mist p-6 rounded-xl border border-fisterra-border flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
+                    <div>
+                        <h2 class="text-xl lg:text-2xl font-semibold text-fisterra-navy tracking-[-0.01em]">Trazabilidad Total // Expediente 360°</h2>
+                        <p class="text-xs lg:text-sm text-fisterra-slateText mt-1">Búsqueda por Nombre, Teléfono, CURP o RFC. Inspección de documentación fiscal SAT, historial IA y bitácora de auditoría.</p>
+                    </div>
+                    <div class="flex flex-wrap items-center gap-2.5 w-full lg:w-auto">
+                        <select id="expStatusFilter" onchange="filterExpedientes()" class="bg-white border border-fisterra-border rounded-lg px-3 py-2 text-xs text-fisterra-navy font-medium focus:outline-none focus:border-fisterra-cyan">
+                            <option value="todos">Todos los Estatus</option>
+                            <option value="Pendiente">Pendientes (>48h alerta)</option>
+                            <option value="Apto">Aptos</option>
+                            <option value="En proceso">En proceso subcontratista</option>
+                            <option value="Contratado">Contratados</option>
+                        </select>
+                        <div class="relative flex-1 lg:w-80">
+                            <i data-lucide="search" class="w-4 h-4 absolute left-3 top-2.5 text-slate-400"></i>
+                            <input type="text" id="searchInput" onkeyup="filterExpedientes()" placeholder="Nombre, Teléfono, CURP o RFC..." class="w-full bg-white border border-fisterra-border rounded-lg pl-9 pr-4 py-2 text-xs text-fisterra-navy focus:outline-none focus:border-fisterra-cyan">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Table of Records -->
+                <div class="bg-white border border-fisterra-border rounded-xl overflow-hidden shadow-sm">
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left border-collapse text-xs">
+                            <thead>
+                                <tr class="bg-fisterra-mist text-slate-600 border-b border-fisterra-border uppercase font-semibold text-[10px] tracking-[0.05em]">
+                                    <th class="p-4">Tipo / Nombre Completo</th>
+                                    <th class="p-4">Proyecto</th>
+                                    <th class="p-4">Oficio / Giro SAT</th>
+                                    <th class="p-4">CURP / RFC & Teléfono</th>
+                                    <th class="p-4">Estatus Actual</th>
+                                    <th class="p-4 text-right">Ficha 360°</th>
+                                </tr>
+                            </thead>
+                            <tbody id="expedienteTableBody" class="divide-y divide-slate-200 text-fisterra-charcoal">
+                                <!-- Populated dynamically by JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ================= MODULE C: CONTROL SUBCONTRATISTAS ("LA JOYA") ================= -->
+            <section id="tab-subcontratistas" class="space-y-6 hidden">
+                
+                <!-- SUBCONTRACTOR LOGIN GATE -->
+                <div id="subcontractorLoginGate" class="hidden max-w-md mx-auto my-8 bg-white border border-fisterra-border rounded-xl p-7 shadow-xl space-y-5">
+                    <div class="text-center space-y-2">
+                        <div class="w-12 h-12 bg-fisterra-navy text-white rounded-xl flex items-center justify-center mx-auto">
+                            <i data-lucide="lock" class="w-5 h-5 text-fisterra-emerald"></i>
+                        </div>
+                        <h3 class="text-lg font-bold text-fisterra-navy">Acceso Restringido Subcontratistas</h3>
+                        <p class="text-xs text-slate-500">Candado Operativo "La Joya" // Fisterra Energy</p>
+                    </div>
+                    <div class="space-y-3.5 text-xs">
+                        <div>
+                            <label class="block text-fisterra-slateText font-semibold mb-1">Empresa Subcontratista</label>
+                            <select id="loginSubCompany" class="w-full bg-fisterra-mist border border-fisterra-border rounded-lg p-2.5 text-fisterra-navy font-semibold">
+                                <option value="Constructora GMI S.A. de C.V.">Constructora GMI S.A. de C.V. (Obra Civil)</option>
+                                <option value="Montajes Electromecánicos del Sur">Montajes Electromecánicos del Sur (Soldadura)</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-fisterra-slateText font-semibold mb-1">Usuario Asignado</label>
+                            <input type="text" id="loginSubUser" value="gmi_contrataciones" class="w-full bg-fisterra-mist border border-fisterra-border rounded-lg p-2.5 text-fisterra-navy font-medium">
+                        </div>
+                        <div>
+                            <label class="block text-fisterra-slateText font-semibold mb-1">Contraseña Corporativa</label>
+                            <input type="password" id="loginSubPass" value="••••••••••••" class="w-full bg-fisterra-mist border border-fisterra-border rounded-lg p-2.5 text-fisterra-navy">
+                        </div>
+                    </div>
+                    <button onclick="authenticateSubcontractor()" class="w-full py-2.5 bg-fisterra-cyan hover:bg-sky-700 text-white font-semibold text-xs rounded-lg shadow-sm transition-all">
+                        Iniciar Sesión Segura
+                    </button>
+                </div>
+
+                <!-- SUBCONTRACTOR ACTIVE WORKSPACE -->
+                <div id="subcontractorWorkspace" class="space-y-6">
+                    <div class="bg-fisterra-mist p-6 rounded-xl border border-fisterra-border flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
+                        <div>
+                            <div class="flex flex-wrap items-center gap-2 mb-1.5">
+                                <span class="bg-fisterra-navy text-white text-[10px] px-2.5 py-0.5 rounded font-semibold uppercase tracking-wider">Módulo "La Joya"</span>
+                                <span class="text-slate-600 text-xs font-semibold" id="activeSubCompanyLabel">Vista Supervisión Directivo / Subcontratista</span>
+                            </div>
+                            <h2 class="text-xl lg:text-2xl font-semibold text-fisterra-navy tracking-[-0.01em]">Bolsa de Talento Aprobada ("Apto") & Asignación</h2>
+                            <p class="text-xs lg:text-sm text-fisterra-slateText mt-1">Visibilidad limitada exclusivamente a personal en estatus <strong>"Apto"</strong> con datos personales enmascarados. Toda solicitud notifica a <strong>Amellaly / Hilario</strong>.</p>
+                        </div>
+                        <div class="flex items-center gap-2.5">
+                            <button id="btnLogoutSub" onclick="logoutSubcontractor()" class="hidden px-3.5 py-2.5 bg-white hover:bg-slate-100 text-fisterra-navy font-semibold text-xs rounded-lg border border-fisterra-border">
+                                Cerrar Sesión
+                            </button>
+                            <button onclick="openRequestModal()" class="px-5 py-2.5 bg-fisterra-cyan hover:bg-sky-700 text-white font-semibold text-xs rounded-lg shadow-sm flex items-center gap-2 transition-all">
+                                <i data-lucide="user-plus" class="w-4 h-4"></i> Solicitar Personal
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Filter Talent Pool by Trade needed -->
+                    <div class="bg-white p-4 rounded-xl border border-fisterra-border flex flex-wrap items-center justify-between gap-4 shadow-sm">
+                        <div class="flex items-center gap-3">
+                            <span class="text-xs font-semibold text-fisterra-navy flex items-center gap-1.5">
+                                <i data-lucide="filter" class="w-4 h-4 text-fisterra-cyan"></i> Filtrar Bolsa por Oficio Requerido:
+                            </span>
+                            <select id="subTradeFilter" onchange="renderTalentPool()" class="bg-fisterra-mist border border-fisterra-border rounded-lg px-3 py-1.5 text-xs text-fisterra-navy font-semibold focus:outline-none">
+                                <option value="todos">Todos los Oficios Aptos</option>
+                                <option value="Albañil">Albañilería / Obra Civil</option>
+                                <option value="Soldador">Soldadura Industrial</option>
+                                <option value="Electricista">Electricidad</option>
+                                <option value="Seguridad">Seguridad Industrial</option>
+                            </select>
+                        </div>
+                        <span class="text-xs text-fisterra-emerald font-semibold tabular-nums" id="aptoCountLabel">Mostrando candidatos en estatus "Apto"</span>
+                    </div>
+
+                    <!-- Talent Pool Grid -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5" id="talentPoolGrid">
+                        <!-- Populated dynamically -->
+                    </div>
+
+                    <!-- Active Subcontractor Requests & Traceability Table -->
+                    <div class="bg-white border border-fisterra-border rounded-xl p-5 space-y-4 shadow-sm">
+                        <div class="flex items-center justify-between">
+                            <h3 class="text-sm font-semibold text-fisterra-navy flex items-center gap-2">
+                                <i data-lucide="clipboard-check" class="w-4 h-4 text-fisterra-emerald"></i> Trazabilidad de Solicitudes y Asignaciones
+                            </h3>
+                            <span class="text-[11px] text-slate-500 font-medium">Aprobación requerida por Amellaly / Hilario</span>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left border-collapse text-xs">
+                                <thead>
+                                    <tr class="bg-fisterra-mist text-slate-600 border-b border-fisterra-border uppercase text-[10px] tracking-[0.05em]">
+                                        <th class="p-3">Folio</th>
+                                        <th class="p-3">Subcontratista</th>
+                                        <th class="p-3">Proyecto / Oficio</th>
+                                        <th class="p-3">Cant. / Fecha</th>
+                                        <th class="p-3">Personal Asignado</th>
+                                        <th class="p-3">Estatus Fisterra</th>
+                                        <th class="p-3 text-right">Acción Directivo</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="subRequestsTableBody" class="divide-y divide-slate-200 text-fisterra-charcoal">
+                                    <!-- Populated by JS -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+        </main>
+    </div>
+
+    <!-- EXPEDIENTE 360 MODAL (MÓDULO B) -->
+    <div id="expedienteModal" class="fixed inset-0 bg-fisterra-navy/70 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white border border-fisterra-border w-full max-w-3xl rounded-xl shadow-2xl overflow-hidden flex flex-col max-h-[92vh]">
+            <!-- Modal Header -->
+            <div class="p-5 border-b border-slate-800 flex items-center justify-between bg-fisterra-navy text-white">
+                <div class="flex items-center space-x-3">
+                    <div class="w-10 h-10 rounded-lg bg-fisterra-emerald/20 text-fisterra-emerald flex items-center justify-center font-bold">
+                        <i data-lucide="user-check" class="w-5 h-5"></i>
+                    </div>
+                    <div>
+                        <div class="flex items-center gap-2">
+                            <h3 class="text-base font-bold text-white" id="modalWorkerName">Nombre</h3>
+                            <span id="modalTypeBadge" class="text-[10px] px-2 py-0.5 rounded bg-fisterra-navyLight text-slate-200 border border-slate-700 font-semibold uppercase">Trabajador</span>
+                        </div>
+                        <p class="text-xs text-slate-300" id="modalWorkerProject">Proyecto</p>
+                    </div>
+                </div>
+                <button onclick="closeModal()" class="p-2 text-slate-300 hover:text-white rounded-lg hover:bg-fisterra-navyLight">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+
+            <!-- Modal Body -->
+            <div class="p-5 overflow-y-auto space-y-5 text-xs bg-white">
+                <!-- 1. Datos Personales / Fiscales -->
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-fisterra-mist p-4 rounded-lg border border-fisterra-border">
+                    <div>
+                        <span class="text-slate-500 block text-[10px] uppercase font-semibold">CURP / RFC</span>
+                        <span class="text-fisterra-navy font-semibold tabular-nums" id="modalCurpRfc">-</span>
+                    </div>
+                    <div>
+                        <span class="text-slate-500 block text-[10px] uppercase font-semibold">Teléfono WhatsApp</span>
+                        <span class="text-fisterra-navy font-semibold tabular-nums" id="modalPhone">-</span>
+                    </div>
+                    <div>
+                        <span class="text-slate-500 block text-[10px] uppercase font-semibold">Oficio / Giro</span>
+                        <span class="text-fisterra-cyan font-semibold" id="modalTrade">-</span>
+                    </div>
+                    <div>
+                        <span class="text-slate-500 block text-[10px] uppercase font-semibold">Estatus Actual</span>
+                        <span class="text-fisterra-emerald font-bold" id="modalStatus">-</span>
+                    </div>
+                </div>
+
+                <!-- 2. Documentos Subidos -->
+                <div class="space-y-2">
+                    <h4 class="font-semibold text-fisterra-navy flex items-center gap-2">
+                        <i data-lucide="file-check-2" class="w-4 h-4 text-fisterra-emerald"></i> Documentos Subidos (Visor & Descarga 1-Clic)
+                    </h4>
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3" id="modalDocsGrid">
+                        <!-- Populated dynamically -->
+                    </div>
+                    <!-- Document Preview Box -->
+                    <div id="docPreviewBox" class="hidden bg-fisterra-mist border border-fisterra-cyan rounded-lg p-4 space-y-2">
+                        <div class="flex items-center justify-between">
+                            <span class="font-bold text-fisterra-navy text-xs" id="docPreviewTitle">Vista Previa Documento</span>
+                            <button onclick="document.getElementById('docPreviewBox').classList.add('hidden')" class="text-slate-500 hover:text-fisterra-navy text-[11px] font-semibold">Cerrar Vista</button>
+                        </div>
+                        <div class="bg-white p-3 rounded border border-fisterra-border text-[11px] text-fisterra-charcoal leading-relaxed" id="docPreviewContent"></div>
+                    </div>
+                </div>
+
+                <!-- Two columns: WhatsApp AI Chat & Audit Timeline -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <!-- 3. Historial de Interacción IA (Capa 1 WhatsApp) -->
+                    <div class="space-y-2">
+                        <h4 class="font-semibold text-fisterra-navy flex items-center gap-2">
+                            <i data-lucide="bot" class="w-4 h-4 text-fisterra-emerald"></i> Historial Interacción IA (Capa 1)
+                        </h4>
+                        <div class="bg-fisterra-mist p-3 rounded-lg border border-fisterra-border space-y-2.5 h-52 overflow-y-auto text-[11px]" id="modalChatHistory">
+                            <!-- Populated dynamically -->
+                        </div>
+                    </div>
+
+                    <!-- 4. Timeline de Auditoría -->
+                    <div class="space-y-2">
+                        <h4 class="font-semibold text-fisterra-navy flex items-center gap-2">
+                            <i data-lucide="history" class="w-4 h-4 text-fisterra-cyan"></i> Timeline de Auditoría
+                        </h4>
+                        <div class="bg-fisterra-mist p-3 rounded-lg border border-fisterra-border space-y-2.5 h-52 overflow-y-auto text-[11px]" id="modalAuditTimeline">
+                            <!-- Populated dynamically -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Modal Footer -->
+            <div class="p-4 border-t border-fisterra-border bg-fisterra-mist flex flex-wrap items-center justify-between gap-3">
+                <div class="flex items-center gap-2">
+                    <span class="text-[11px] text-slate-600 font-medium">Dictamen:</span>
+                    <button onclick="changeWorkerStatus('Apto')" class="px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 rounded-lg text-xs font-semibold">
+                        Marcar Apto
+                    </button>
+                    <button onclick="changeWorkerStatus('Rechazado')" class="px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-800 border border-rose-300 rounded-lg text-xs font-semibold">
+                        Rechazar
+                    </button>
+                </div>
+                <div class="flex items-center gap-2">
+                    <button onclick="closeModal()" class="px-4 py-2 bg-white hover:bg-slate-100 text-fisterra-navy border border-fisterra-border rounded-lg text-xs font-semibold">Cerrar</button>
+                    <button onclick="changeWorkerStatus('Contratado')" class="px-4 py-2 bg-fisterra-navy hover:bg-fisterra-navyLight text-white rounded-lg text-xs font-semibold flex items-center gap-1.5">
+                        <i data-lucide="check-circle-2" class="w-4 h-4 text-fisterra-emerald"></i> Cambiar a "Contratado"
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SOLICITAR PERSONAL MODAL (MÓDULO C: SUBCONTRATISTA) -->
+    <div id="requestModal" class="fixed inset-0 bg-fisterra-navy/70 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white border border-fisterra-border w-full max-w-md rounded-xl shadow-2xl overflow-hidden">
+            <div class="p-5 border-b border-slate-800 flex items-center justify-between bg-fisterra-navy text-white">
+                <h3 class="text-sm font-bold flex items-center gap-2">
+                    <i data-lucide="user-plus" class="w-4 h-4 text-fisterra-emerald"></i> Solicitar Personal a Fisterra Energy
+                </h3>
+                <button onclick="closeRequestModal()" class="p-1.5 text-slate-300 hover:text-white rounded-lg hover:bg-fisterra-navyLight">
+                    <i data-lucide="x" class="w-4 h-4"></i>
+                </button>
+            </div>
+            <div class="p-5 space-y-4 text-xs bg-white">
+                <div class="bg-sky-50 border border-sky-200 p-3 rounded-lg text-fisterra-navy text-[11px] leading-relaxed">
+                    Esta solicitud notificará automáticamente a <strong>Amellaly Garza / Hilario Sánchez</strong> y cambiará el estatus del personal asignado.
+                </div>
+                <div>
+                    <label class="block text-fisterra-slateText font-semibold mb-1">Subcontratista Solicitante</label>
+                    <input type="text" id="reqSubName" value="Constructora GMI S.A. de C.V." readonly class="w-full bg-fisterra-mist border border-fisterra-border rounded-lg p-2.5 text-fisterra-navy font-semibold">
+                </div>
+                <div>
+                    <label class="block text-fisterra-slateText font-semibold mb-1">Proyecto Fisterra</label>
+                    <select id="reqProject" class="w-full bg-white border border-fisterra-border rounded-lg p-2.5 text-fisterra-navy font-medium focus:outline-none focus:border-fisterra-cyan">
+                        <option value="Cerro Colorado (Sayula)">Cerro Colorado (Sayula de Alemán)</option>
+                        <option value="Haab Kiin (Yucatán)">Haab Kiin (Yucatán)</option>
+                        <option value="San Simón (San Quintín)">San Simón (San Quintín)</option>
+                    </select>
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-fisterra-slateText font-semibold mb-1">Oficio Requerido</label>
+                        <select id="reqTrade" class="w-full bg-white border border-fisterra-border rounded-lg p-2.5 text-fisterra-navy font-medium focus:outline-none focus:border-fisterra-cyan">
+                            <option value="Albañil">Albañil</option>
+                            <option value="Soldador">Soldador</option>
+                            <option value="Electricista">Electricista</option>
+                            <option value="Seguridad">Seguridad</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-fisterra-slateText font-semibold mb-1">Cantidad de Personal</label>
+                        <input type="number" id="reqQty" value="2" min="1" max="20" class="w-full bg-white border border-fisterra-border rounded-lg p-2.5 text-fisterra-navy tabular-nums focus:outline-none focus:border-fisterra-cyan">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-fisterra-slateText font-semibold mb-1">Fecha de Ingreso a Obra</label>
+                    <input type="date" id="reqDate" value="2026-11-24" class="w-full bg-white border border-fisterra-border rounded-lg p-2.5 text-fisterra-navy tabular-nums focus:outline-none focus:border-fisterra-cyan">
+                </div>
+            </div>
+            <div class="p-4 border-t border-fisterra-border bg-fisterra-mist flex justify-end gap-3">
+                <button onclick="closeRequestModal()" class="px-4 py-2 bg-white hover:bg-slate-100 text-fisterra-navy border border-fisterra-border rounded-lg text-xs font-semibold">Cancelar</button>
+                <button onclick="submitPersonnelRequest()" class="px-4 py-2 bg-fisterra-cyan hover:bg-sky-700 text-white font-semibold rounded-lg text-xs shadow-sm">Confirmar Solicitud</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- SESSION STARTER (LOGIN POR ROL - SIN CONTRASEÑA) -->
+    <div id="loginScreen" class="fixed inset-0 z-[100] bg-fisterra-navy/95 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="w-full max-w-md bg-white border border-fisterra-border rounded-2xl shadow-2xl overflow-hidden">
+            <div class="bg-fisterra-navy p-6 text-center border-b border-slate-800">
+                <div class="w-12 h-12 bg-fisterra-emerald/15 text-fisterra-emerald border border-fisterra-emerald/40 rounded-xl flex items-center justify-center mx-auto mb-3">
+                    <i data-lucide="shield-check" class="w-6 h-6"></i>
+                </div>
+                <h2 class="text-lg font-bold text-white tracking-[-0.01em]">Centro de Mando</h2>
+                <p class="text-xs font-medium text-slate-300 tracking-wide">Fisterra Energy</p>
+                <span class="inline-block mt-3 bg-fisterra-navyLight border border-slate-700 text-fisterra-emerald text-[10px] font-bold uppercase tracking-[0.08em] px-2.5 py-0.5 rounded">Iniciador de Sesión</span>
+            </div>
+            <div class="p-5 space-y-2.5">
+                <p class="text-[11px] text-slate-500 text-center font-medium pb-1">Selecciona tu rol para abrir el panel correspondiente.</p>
+
+                <button onclick="startSession('directivo')" class="w-full flex items-center gap-3 p-3.5 rounded-xl border border-fisterra-border bg-fisterra-mist hover:bg-white hover:border-fisterra-cyan transition-all text-left group">
+                    <div class="w-10 h-10 rounded-lg bg-fisterra-navy text-fisterra-emerald flex items-center justify-center flex-shrink-0">
+                        <i data-lucide="briefcase" class="w-5 h-5"></i>
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <p class="text-xs font-bold text-fisterra-navy">Directivo Fisterra</p>
+                        <p class="text-[11px] text-slate-500">Cockpit ejecutivo, KPIs y aprobaciones finales</p>
+                    </div>
+                    <i data-lucide="chevron-right" class="w-4 h-4 text-slate-400 group-hover:text-fisterra-cyan flex-shrink-0"></i>
+                </button>
+
+                <button onclick="startSession('operador')" class="w-full flex items-center gap-3 p-3.5 rounded-xl border border-fisterra-border bg-fisterra-mist hover:bg-white hover:border-fisterra-cyan transition-all text-left group">
+                    <div class="w-10 h-10 rounded-lg bg-fisterra-cyan text-white flex items-center justify-center flex-shrink-0">
+                        <i data-lucide="clipboard-check" class="w-5 h-5"></i>
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <p class="text-xs font-bold text-fisterra-navy">Operador / Gestor</p>
+                        <p class="text-[11px] text-slate-500">Validaciones documentales y dictámenes</p>
+                    </div>
+                    <i data-lucide="chevron-right" class="w-4 h-4 text-slate-400 group-hover:text-fisterra-cyan flex-shrink-0"></i>
+                </button>
+
+                <button onclick="startSession('subcontratista')" class="w-full flex items-center gap-3 p-3.5 rounded-xl border border-fisterra-border bg-fisterra-mist hover:bg-white hover:border-fisterra-cyan transition-all text-left group">
+                    <div class="w-10 h-10 rounded-lg bg-fisterra-navy text-fisterra-cyan flex items-center justify-center flex-shrink-0">
+                        <i data-lucide="lock" class="w-5 h-5"></i>
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <p class="text-xs font-bold text-fisterra-navy">Subcontratista ("La Joya")</p>
+                        <p class="text-[11px] text-slate-500">Bolsa de talento "Apto" y solicitudes de personal</p>
+                    </div>
+                    <i data-lucide="chevron-right" class="w-4 h-4 text-slate-400 group-hover:text-fisterra-cyan flex-shrink-0"></i>
+                </button>
+            </div>
+            <div class="px-5 py-3 bg-fisterra-mist border-t border-fisterra-border text-center">
+                <p class="text-[10px] text-slate-500 font-medium">Acceso demo sin contraseña • PostgreSQL SSOT • Fisterra Energy</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- TOAST NOTIFICATION -->
+    <div id="toast" class="fixed bottom-6 right-6 bg-fisterra-navy border border-slate-700 text-white px-5 py-3 rounded-lg shadow-xl flex items-center space-x-3 transform translate-y-24 opacity-0 transition-all duration-300 z-[110]">
+        <i data-lucide="check-circle" class="w-4 h-4 text-fisterra-emerald flex-shrink-0"></i>
+        <span id="toastMessage" class="text-xs font-medium">Operación exitosa</span>
+    </div>
+
+    <!-- JAVASCRIPT LOGIC -->
+    <script>
+        lucide.createIcons();
+
+        // STATE VARIABLES
+        let currentProject = 'todos';
+        let currentEntityFilter = 'todos';
+        let currentTimeScale = 'semana';
+        let currentRole = null;
+        let subAuthenticated = false;
+        let activeSubCompany = 'Constructora GMI S.A. de C.V.';
+        let selectedRecordId = null;
+
+        // SIDEBAR COLLAPSE TOGGLE
+        function toggleSidebar() {
+            const sidebar = document.getElementById('mainSidebar');
+            sidebar.classList.toggle('sidebar-collapsed');
+        }
+
+        // PROJECT ANALYTICS DATASET
+        const projectMetrics = {
+            todos: {
+                name: "Todos los Proyectos (3 Plantas)",
+                trabajadores: 2610, proveedores: 235,
+                aptos: 1944, pendientes: 512, contratados: 682, rechazados: 109,
+                pending48h: 18, threshold: 15,
+                alertProject: "Cerro Colorado tiene 18 solicitudes > 48 hrs sin dictamen SAT/RENAPO.",
+                tradesLabels: ['Albañilería', 'Soldadura', 'Electricidad', 'Operador Maq.', 'Seguridad'],
+                tradesData: [980, 560, 420, 380, 505],
+                provLabels: ['Obra Civil', 'Acero/Materiales', 'Maquinaria', 'Transporte', 'Seguridad'],
+                provData: [85, 62, 41, 28, 19],
+                weeklyCurve: [320, 680, 1120, 1690, 2240, 2845],
+                dailyCurve: [42, 58, 65, 51, 79, 94, 88]
+            },
+            cerro_colorado: {
+                name: "Cerro Colorado (Sayula de Alemán)",
+                trabajadores: 1180, proveedores: 98,
+                aptos: 810, pendientes: 280, contratados: 310, rechazados: 48,
+                pending48h: 14, threshold: 10,
+                alertProject: "Cerro Colorado supera el límite: 14 expedientes llevan > 48 horas pendientes.",
+                tradesLabels: ['Albañilería', 'Soldadura', 'Operador Maq.', 'Electricidad', 'Seguridad'],
+                tradesData: [490, 260, 190, 130, 110],
+                provLabels: ['Obra Civil', 'Acero/Materiales', 'Maquinaria', 'Transporte', 'Seguridad'],
+                provData: [38, 25, 18, 11, 6],
+                weeklyCurve: [140, 310, 520, 780, 1020, 1278],
+                dailyCurve: [18, 25, 31, 22, 38, 44, 39]
+            },
+            haab_kiin: {
+                name: "Haab Kiin (Yucatán)",
+                trabajadores: 820, proveedores: 79,
+                aptos: 654, pendientes: 120, contratados: 215, rechazados: 31,
+                pending48h: 2, threshold: 10,
+                alertProject: "",
+                tradesLabels: ['Electricidad', 'Albañilería', 'Seguridad', 'Soldadura', 'Operador Maq.'],
+                tradesData: [240, 220, 180, 110, 70],
+                provLabels: ['Eléctrico/Solar', 'Obra Civil', 'Seguridad', 'Transporte', 'Maquinaria'],
+                provData: [32, 20, 12, 9, 6],
+                weeklyCurve: [100, 210, 340, 510, 710, 899],
+                dailyCurve: [14, 19, 20, 16, 24, 29, 27]
+            },
+            san_simon: {
+                name: "San Simón (San Quintín)",
+                trabajadores: 610, proveedores: 58,
+                aptos: 480, pendientes: 112, contratados: 157, rechazados: 30,
+                pending48h: 2, threshold: 10,
+                alertProject: "",
+                tradesLabels: ['Albañilería', 'Soldadura', 'Seguridad', 'Operador Maq.', 'Electricidad'],
+                tradesData: [270, 190, 215, 120, 50],
+                provLabels: ['Obra Civil', 'Maquinaria', 'Acero/Materiales', 'Transporte', 'Seguridad'],
+                provData: [15, 17, 15, 8, 3],
+                weeklyCurve: [80, 160, 260, 400, 510, 668],
+                dailyCurve: [10, 14, 14, 13, 17, 21, 22]
+            }
+        };
+
+        // EXPEDIENTES 360 DATABASE
+        let recordsDatabase = [
+            {
+                id: 101, type: "Trabajador", projectKey: "cerro_colorado", project: "Cerro Colorado (Sayula)",
+                name: "Juan Pérez Gómez", trade: "Albañil Especialista", curpRfc: "PEGJ840512HVE01",
+                phone: "+52 921 445 8920", status: "Apto", hoursPending: 12,
+                docs: [
+                    { name: "INE Anverso/Reverso", code: "OCR-INE-99281", detail: "Vigencia 2031 • Coincidencia biométrica 99.4% con RENAPO." },
+                    { name: "Constancia Situación Fiscal", code: "SAT-CSF-2026", detail: "Régimen Sueldos y Salarios • RFC verificado ante SAT." },
+                    { name: "Certificado DC-3 Seguridad", code: "STPS-DC3-441", detail: "Trabajos en alturas y cimentación vigente." }
+                ],
+                chat: [
+                    { sender: "bot", text: "Hola, soy el asistente de Fisterra Energy para Cerro Colorado. ¿Cuál es tu oficio?" },
+                    { sender: "user", text: "Soy albañil fierrero con 6 años de experiencia en obra industrial." },
+                    { sender: "bot", text: "Excelente. Por favor envíame foto de tu INE y Constancia SAT." },
+                    { sender: "user", text: "[Documentos adjuntos vía WhatsApp]" },
+                    { sender: "bot", text: "Validación preliminar exitosa. Tu expediente pasó a revisión de Gestor." }
+                ],
+                audit: [
+                    { time: "14 Nov 09:10", action: "Registro creado vía Capa 1 (WhatsApp Bot)", user: "Sistema IA" },
+                    { time: "14 Nov 11:45", action: "Validación documental aprobada ➔ Apto", user: "Lic. Hilario Sánchez" }
+                ]
+            },
+            {
+                id: 102, type: "Trabajador", projectKey: "haab_kiin", project: "Haab Kiin (Yucatán)",
+                name: "María Elena Rivas", trade: "Soldador Industrial", curpRfc: "RIVM901021MYC89",
+                phone: "+52 999 123 4567", status: "Apto", hoursPending: 8,
+                docs: [
+                    { name: "INE Oficial", code: "OCR-INE-77312", detail: "Identidad validada en Yucatán." },
+                    { name: "Certificación Soldadura 6G", code: "AWS-6G-882", detail: "Prueba de ultrasonido aprobada." }
+                ],
+                chat: [
+                    { sender: "bot", text: "Bienvenido al portal de reclutamiento Haab Kiin. ¿Qué especialidad tienes?" },
+                    { sender: "user", text: "Soldadura estructural TIG y electrodo revestido." },
+                    { sender: "bot", text: "Certificación detectada. Expediente listo para validación." }
+                ],
+                audit: [
+                    { time: "15 Nov 08:30", action: "Ingreso vía WhatsApp Bot", user: "Sistema IA" },
+                    { time: "15 Nov 10:15", action: "Dictamen Apto confirmado", user: "Ing. Amellaly Garza" }
+                ]
+            },
+            {
+                id: 103, type: "Proveedor", projectKey: "cerro_colorado", project: "Cerro Colorado (Sayula)",
+                name: "Aceros y Estructuras del Istmo S.A.", trade: "Acero/Materiales", curpRfc: "AEI1408229K1",
+                phone: "+52 921 214 7788", status: "Contratado", hoursPending: 0,
+                docs: [
+                    { name: "Opinión Cumplimiento 32-D SAT", code: "SAT-32D-POS", detail: "Opinión POSITIVA emitida hoy. Sin adeudos fiscales." },
+                    { name: "Acta Constitutiva", code: "NOT-4512-VER", detail: "Objeto social compatible con suministro industrial." },
+                    { name: "Comprobante Domicilio Fiscal", code: "CFE-998123", detail: "Coatzacoalcos, Veracruz verificado." }
+                ],
+                chat: [
+                    { sender: "bot", text: "Hola, registro de Proveedores Fisterra. Indica tu giro y RFC." },
+                    { sender: "user", text: "Suministro de acero estructural. RFC AEI1408229K1." },
+                    { sender: "bot", text: "Opinión 32-D verificada automáticamente." }
+                ],
+                audit: [
+                    { time: "10 Nov 14:20", action: "Alta de proveedor en PostgreSQL", user: "Sistema IA" },
+                    { time: "11 Nov 16:00", action: "Aprobación Comité y Cambio a Contratado", user: "Ing. Amellaly Garza" }
+                ]
+            },
+            {
+                id: 104, type: "Trabajador", projectKey: "cerro_colorado", project: "Cerro Colorado (Sayula)",
+                name: "Roberto Santes Limón", trade: "Albañil", curpRfc: "SALR950618HVE04",
+                phone: "+52 921 987 6543", status: "Pendiente", hoursPending: 64,
+                docs: [
+                    { name: "INE Anverso/Reverso", code: "OCR-INE-33109", detail: "Pendiente verificación manual de reverso." }
+                ],
+                chat: [
+                    { sender: "bot", text: "Hola Roberto, recibimos tu solicitud para Cerro Colorado." },
+                    { sender: "user", text: "Listo, ya subí mi INE." }
+                ],
+                audit: [
+                    { time: "13 Nov 18:00", action: "Registro creado (Pendiente > 48h en alerta)", user: "Sistema IA" }
+                ]
+            },
+            {
+                id: 105, type: "Trabajador", projectKey: "san_simon", project: "San Simón (San Quintín)",
+                name: "Carlos Mendoza Ruiz", trade: "Electricista", curpRfc: "MERC780314BCN12",
+                phone: "+52 616 789 0123", status: "Apto", hoursPending: 5,
+                docs: [
+                    { name: "INE Oficial", code: "OCR-INE-55190", detail: "Validado RENAPO." },
+                    { name: "Constancia SAT", code: "SAT-CSF-112", detail: "Activo sin observaciones." }
+                ],
+                chat: [
+                    { sender: "bot", text: "Proyecto San Simón San Quintín. ¿Años de experiencia eléctrica?" },
+                    { sender: "user", text: "8 años en media tensión y subestaciones." }
+                ],
+                audit: [
+                    { time: "15 Nov 12:10", action: "Aprobado como Apto", user: "Lic. Hilario Sánchez" }
+                ]
+            },
+            {
+                id: 106, type: "Trabajador", projectKey: "san_simon", project: "San Simón (San Quintín)",
+                name: "Esteban Zepeda Morán", trade: "Seguridad", curpRfc: "ZEME920228BCN05",
+                phone: "+52 616 333 4455", status: "Apto", hoursPending: 4,
+                docs: [
+                    { name: "Registro Agente Capacitador STPS", code: "STPS-9902", detail: "Supervisor EHS certificado." }
+                ],
+                chat: [
+                    { sender: "bot", text: "Hola Esteban, registro para Seguridad Industrial en San Simón." },
+                    { sender: "user", text: "Adjunto credenciales EHS." }
+                ],
+                audit: [
+                    { time: "16 Nov 09:00", action: "Validado como Apto", user: "Ing. Amellaly Garza" }
+                ]
+            }
+        ];
+
+        // SUBCONTRACTOR REQUESTS & NOTIFICATIONS
+        let subRequests = [
+            {
+                id: "SOL-401", subCompany: "Montajes Electromecánicos del Sur", project: "Haab Kiin (Yucatán)",
+                trade: "Soldador", qty: 1, date: "2026-11-22", workersNames: "María Elena Rivas",
+                status: "Pendiente Aprobación Fisterra"
+            }
+        ];
+
+        let notifications = [
+            {
+                id: 1, title: "Solicitud Subcontratista: Montajes del Sur",
+                desc: "Solicita 1 Soldador en Haab Kiin para el 22 Nov. Requiere firma Amellaly/Hilario.",
+                time: "Hace 18 min", unread: true, reqId: "SOL-401"
+            },
+            {
+                id: 2, title: "Alerta Semáforo > 48h: Cerro Colorado",
+                desc: "14 expedientes pendientes de validación SAT/INE en Sayula de Alemán.",
+                time: "Hace 1 hora", unread: true, reqId: null
+            }
+        ];
+
+        // CHARTS INSTANCES
+        let statusChartInstance = null;
+        let tradesChartInstance = null;
+        let lineChartInstance = null;
+
+        window.onload = function() {
+            initCharts();
+            updateDashboardUI();
+            renderExpedienteTable();
+            renderTalentPool();
+            renderSubRequests();
+            renderNotifications();
+        };
+
+        // ==================== SESIÓN POR ROL (INICIADOR / CIERRE) ====================
+        function startSession(role) {
+            currentRole = role;
+            document.getElementById('loginScreen').classList.add('hidden');
+
+            const sidebar = document.getElementById('mainSidebar');
+            const topSearch = document.getElementById('topGlobalSearchContainer');
+            const gate = document.getElementById('subcontractorLoginGate');
+            const workspace = document.getElementById('subcontractorWorkspace');
+            const subLogoutBtn = document.getElementById('btnLogoutSub');
+
+            if (role === 'directivo') {
+                document.getElementById('userNameLabel').innerText = "Ing. Amellaly Garza";
+                document.getElementById('userRoleLabel').innerText = "Directora de Operaciones (2FA)";
+                document.getElementById('userAvatar').innerText = "AG";
+                sidebar.classList.remove('hidden');
+                topSearch.classList.remove('xl:hidden');
+                gate.classList.add('hidden');
+                workspace.classList.remove('hidden');
+                subLogoutBtn.classList.add('hidden');
+                renderSubRequests();
+                switchTab('dashboard');
+                showToast("Sesión iniciada: Directivo Fisterra (Visibilidad Total)");
+            } else if (role === 'operador') {
+                document.getElementById('userNameLabel').innerText = "Lic. Hilario Sánchez";
+                document.getElementById('userRoleLabel').innerText = "Gestor Operativo & Validaciones";
+                document.getElementById('userAvatar').innerText = "HS";
+                sidebar.classList.remove('hidden');
+                topSearch.classList.remove('xl:hidden');
+                gate.classList.add('hidden');
+                workspace.classList.remove('hidden');
+                subLogoutBtn.classList.add('hidden');
+                renderSubRequests();
+                switchTab('expediente');
+                showToast("Sesión iniciada: Operador / Gestor de Validaciones");
+            } else if (role === 'subcontratista') {
+                sidebar.classList.add('hidden');
+                topSearch.classList.add('xl:hidden');
+                if (!subAuthenticated) {
+                    document.getElementById('userNameLabel').innerText = "Acceso Restringido";
+                    document.getElementById('userRoleLabel').innerText = "Requiere Login Subcontratista";
+                    document.getElementById('userAvatar').innerText = "SC";
+                    gate.classList.remove('hidden');
+                    workspace.classList.add('hidden');
+                    subLogoutBtn.classList.add('hidden');
+                } else {
+                    activateSubcontractorSession();
+                }
+                switchTab('subcontratistas');
+                showToast("Sesión iniciada: Portal Subcontratista (La Joya)");
+            }
+            lucide.createIcons();
+        }
+
+        function logout() {
+            document.getElementById('expedienteModal').classList.add('hidden');
+            document.getElementById('requestModal').classList.add('hidden');
+            document.getElementById('notificationsPanel').classList.add('hidden');
+            document.getElementById('loginScreen').classList.remove('hidden');
+
+            subAuthenticated = false;
+            currentRole = null;
+
+            document.getElementById('userNameLabel').innerText = "Sin Sesión";
+            document.getElementById('userRoleLabel').innerText = "Inicia sesión con tu rol";
+            document.getElementById('userAvatar').innerText = "--";
+
+            showToast("Sesión cerrada correctamente");
+            lucide.createIcons();
+        }
+
+        // ==================== MODULE A: DASHBOARD LOGIC ====================
+        function switchProject(projectKey) {
+            currentProject = projectKey;
+            updateDashboardUI();
+            renderExpedienteTable();
+            renderTalentPool();
+            showToast(`Filtro aplicado: ${projectMetrics[projectKey].name}`);
+        }
+
+        function setEntityFilter(entity) {
+            currentEntityFilter = entity;
+            ['todos', 'trabajador', 'proveedor'].forEach(e => {
+                const btn = document.getElementById(`btn-ent-${e}`);
+                if (e === entity) {
+                    btn.className = "px-3 py-1.5 rounded-md bg-fisterra-navy text-white font-semibold transition-all";
+                } else {
+                    btn.className = "px-3 py-1.5 rounded-md text-fisterra-slateText hover:text-fisterra-navy font-semibold transition-all";
+                }
+            });
+            updateDashboardUI();
+        }
+
+        function toggleTimeScale(scale) {
+            currentTimeScale = scale;
+            document.getElementById('btn-time-semana').className = scale === 'semana' ? "px-2.5 py-0.5 rounded bg-fisterra-navy text-white font-semibold" : "px-2.5 py-0.5 rounded text-slate-600 hover:text-fisterra-navy font-semibold";
+            document.getElementById('btn-time-dia').className = scale === 'dia' ? "px-2.5 py-0.5 rounded bg-fisterra-navy text-white font-semibold" : "px-2.5 py-0.5 rounded text-slate-600 hover:text-fisterra-navy font-semibold";
+            updateDashboardUI();
+        }
+
+        function updateDashboardUI() {
+            const data = projectMetrics[currentProject];
+            document.getElementById('currentProjectBadge').innerText = data.name;
+
+            let factor = 1;
+            if (currentEntityFilter === 'trabajador') factor = 0.91;
+            if (currentEntityFilter === 'proveedor') factor = 0.09;
+
+            const totalReg = currentEntityFilter === 'todos' ? (data.trabajadores + data.proveedores) :
+                             currentEntityFilter === 'trabajador' ? data.trabajadores : data.proveedores;
+
+            const aptos = Math.round(data.aptos * factor);
+            const pendientes = Math.round(data.pendientes * factor);
+            const contratados = Math.round(data.contratados * factor);
+            const rechazados = Math.round(data.rechazados * factor);
+
+            document.getElementById('kpiTotalRegistrados').innerText = totalReg.toLocaleString();
+            document.getElementById('kpiSubBreakdown').innerText = currentEntityFilter === 'todos'
+                ? `(${data.trabajadores.toLocaleString()} Trab / ${data.proveedores} Prov)`
+                : currentEntityFilter === 'trabajador' ? '(Solo Fuerza Laboral)' : '(Solo Proveedores SAT)';
+
+            const pctApto = Math.round((aptos / Math.max(totalReg, 1)) * 100);
+            const pctCont = Math.round((contratados / Math.max(totalReg, 1)) * 100);
+            document.getElementById('kpiConversionFunnel').innerText = `100% ➔ ${pctApto}% ➔ ${pctCont}%`;
+            document.getElementById('kpiConversionDetail').innerText = `${aptos.toLocaleString()} Aptos • ${contratados.toLocaleString()} Contratados`;
+
+            // Semáforo de Riesgo (>48h)
+            document.getElementById('kpiPendientes48').innerText = data.pending48h;
+            const alertBanner = document.getElementById('riskAlertBanner');
+            const semText = document.getElementById('kpiSemaforoText');
+            const semSub = document.getElementById('kpiSemaforoSub');
+
+            if (data.pending48h > data.threshold) {
+                alertBanner.classList.remove('hidden');
+                document.getElementById('riskAlertDesc').innerText = data.alertProject;
+                semText.innerHTML = `<span class="w-2.5 h-2.5 rounded-full bg-rose-600"></span> Riesgo Alto (>48 hrs)`;
+                semText.className = "text-lg font-bold text-rose-700 mt-3 flex items-center gap-2";
+                semSub.innerText = `${data.pending48h} solicitudes exceden SLA`;
+            } else {
+                alertBanner.classList.add('hidden');
+                semText.innerHTML = `<span class="w-2.5 h-2.5 rounded-full bg-fisterra-emerald"></span> Óptimo (En Tiempo)`;
+                semText.className = "text-lg font-bold text-fisterra-emerald mt-3 flex items-center gap-2";
+                semSub.innerText = `Solo ${data.pending48h} pendientes (Umbral: ${data.threshold})`;
+            }
+
+            // Update Donut Chart
+            statusChartInstance.data.datasets[0].data = [aptos, pendientes, contratados, rechazados];
+            statusChartInstance.update();
+
+            document.getElementById('donutLegend').innerHTML = `
+                <div class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-[#00A878]"></span> Aptos (${aptos})</div>
+                <div class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-[#D97706]"></span> Pendientes (${pendientes})</div>
+                <div class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-[#0A192F]"></span> Contratados (${contratados})</div>
+                <div class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-[#DC2626]"></span> Rechazados (${rechazados})</div>
+            `;
+
+            // Update Bar Chart
+            if (currentEntityFilter === 'proveedor') {
+                document.getElementById('barChartTitle').innerHTML = `<i data-lucide="bar-chart-3" class="w-4 h-4 text-fisterra-cyan"></i> Demanda por Giro de Proveedor`;
+                tradesChartInstance.data.labels = data.provLabels;
+                tradesChartInstance.data.datasets[0].data = data.provData;
+            } else {
+                document.getElementById('barChartTitle').innerHTML = `<i data-lucide="bar-chart-3" class="w-4 h-4 text-fisterra-cyan"></i> Demanda por Oficio en Obra`;
+                tradesChartInstance.data.labels = data.tradesLabels;
+                tradesChartInstance.data.datasets[0].data = data.tradesData;
+            }
+            tradesChartInstance.update();
+
+            // Update Line Chart
+            if (currentTimeScale === 'semana') {
+                lineChartInstance.data.labels = ['Sem 1', 'Sem 2', 'Sem 3', 'Sem 4', 'Sem 5', 'Sem 6'];
+                lineChartInstance.data.datasets[0].data = data.weeklyCurve;
+            } else {
+                lineChartInstance.data.labels = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
+                lineChartInstance.data.datasets[0].data = data.dailyCurve;
+            }
+            lineChartInstance.update();
+            lucide.createIcons();
+        }
+
+        // ==================== MODULE B: EXPEDIENTE 360 LOGIC ====================
+        function handleTopSearch(val) {
+            document.getElementById('searchInput').value = val;
+            switchTab('expediente');
+            filterExpedientes();
+        }
+
+        function renderExpedienteTable() {
+            const query = (document.getElementById('searchInput')?.value || '').toLowerCase();
+            const statusFilter = document.getElementById('expStatusFilter')?.value || 'todos';
+            const tbody = document.getElementById('expedienteTableBody');
+            tbody.innerHTML = '';
+
+            const filtered = recordsDatabase.filter(r => {
+                const matchProject = currentProject === 'todos' || r.projectKey === currentProject;
+                const matchQuery = r.name.toLowerCase().includes(query) ||
+                                   r.curpRfc.toLowerCase().includes(query) ||
+                                   r.phone.toLowerCase().includes(query) ||
+                                   r.trade.toLowerCase().includes(query);
+                const matchStatus = statusFilter === 'todos' || r.status.includes(statusFilter);
+                return matchProject && matchQuery && matchStatus;
+            });
+
+            if (filtered.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="6" class="p-8 text-center text-slate-500">No se encontraron expedientes con esos criterios de búsqueda.</td></tr>`;
+                return;
+            }
+
+            filtered.forEach(r => {
+                let statusBadge = 'bg-amber-50 text-amber-800 border-amber-300';
+                if (r.status === 'Apto') statusBadge = 'bg-emerald-50 text-emerald-800 border-emerald-300';
+                else if (r.status === 'Contratado') statusBadge = 'bg-slate-100 text-fisterra-navy border-slate-300';
+                else if (r.status === 'Rechazado') statusBadge = 'bg-rose-50 text-rose-800 border-rose-300';
+                else if (r.status.startsWith('En proceso')) statusBadge = 'bg-sky-50 text-fisterra-cyan border-sky-300';
+
+                const typeTag = r.type === 'Proveedor'
+                    ? `<span class="text-[10px] bg-sky-100 text-fisterra-cyan px-1.5 py-0.5 rounded font-semibold">PROVEEDOR</span>`
+                    : `<span class="text-[10px] bg-slate-200 text-fisterra-navy px-1.5 py-0.5 rounded font-semibold">TRABAJADOR</span>`;
+
+                const slaAlert = (r.status === 'Pendiente' && r.hoursPending > 48)
+                    ? `<span class="ml-1.5 text-[10px] bg-rose-100 text-rose-800 px-1.5 py-0.5 rounded font-semibold tabular-nums">${r.hoursPending}h</span>`
+                    : '';
+
+                tbody.innerHTML += `
+                    <tr class="hover:bg-fisterra-mist transition-colors">
+                        <td class="p-4">
+                            <div class="flex items-center gap-2 mb-0.5">${typeTag} <span class="font-semibold text-fisterra-navy">${r.name}</span></div>
+                            <span class="text-[11px] text-slate-500 tabular-nums">${r.phone}</span>
+                        </td>
+                        <td class="p-4 text-fisterra-slateText">${r.project}</td>
+                        <td class="p-4 font-semibold text-fisterra-cyan">${r.trade}</td>
+                        <td class="p-4 tabular-nums text-fisterra-slateText font-medium">${r.curpRfc}</td>
+                        <td class="p-4">
+                            <span class="px-2.5 py-1 rounded-full text-[10px] font-semibold border ${statusBadge}">${r.status}</span>${slaAlert}
+                        </td>
+                        <td class="p-4 text-right">
+                            <button onclick="openExpedienteModal(${r.id})" class="px-3 py-1.5 bg-fisterra-navy hover:bg-fisterra-navyLight text-white rounded-lg text-xs font-semibold inline-flex items-center gap-1.5 transition-all">
+                                <i data-lucide="folder-open" class="w-3.5 h-3.5 text-fisterra-emerald"></i> Ficha 360°
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            });
+            lucide.createIcons();
+        }
+
+        function filterExpedientes() {
+            renderExpedienteTable();
+        }
+
+        function openExpedienteModal(id) {
+            const record = recordsDatabase.find(r => r.id === id);
+            if (!record) return;
+            selectedRecordId = id;
+
+            document.getElementById('modalWorkerName').innerText = record.name;
+            document.getElementById('modalTypeBadge').innerText = record.type;
+            document.getElementById('modalWorkerProject').innerText = record.project;
+            document.getElementById('modalCurpRfc').innerText = record.curpRfc;
+            document.getElementById('modalPhone').innerText = record.phone;
+            document.getElementById('modalTrade').innerText = record.trade;
+            document.getElementById('modalStatus').innerText = record.status;
+            document.getElementById('docPreviewBox').classList.add('hidden');
+
+            // Render Documents
+            const docsGrid = document.getElementById('modalDocsGrid');
+            docsGrid.innerHTML = '';
+            record.docs.forEach((doc, idx) => {
+                docsGrid.innerHTML += `
+                    <div class="p-3 bg-fisterra-mist rounded-lg border border-fisterra-border flex flex-col justify-between gap-2">
+                        <div>
+                            <span class="text-fisterra-navy font-semibold block">${doc.name}</span>
+                            <span class="text-[10px] text-slate-500">${doc.code}</span>
+                        </div>
+                        <div class="flex items-center gap-2 pt-1.5 border-t border-slate-200">
+                            <button onclick="previewDoc(${record.id}, ${idx})" class="text-fisterra-emerald hover:underline text-[11px] font-semibold flex items-center gap-1">
+                                <i data-lucide="eye" class="w-3 h-3"></i> Ver
+                            </button>
+                            <button onclick="showToast('Descargando ${doc.name} (${doc.code}.pdf)...')" class="text-fisterra-cyan hover:underline text-[11px] font-semibold flex items-center gap-1 ml-auto">
+                                <i data-lucide="download" class="w-3 h-3"></i> Descargar
+                            </button>
+                        </div>
+                    </div>
+                `;
+            });
+
+            // Render WhatsApp AI Chat History
+            const chatBox = document.getElementById('modalChatHistory');
+            chatBox.innerHTML = '';
+            record.chat.forEach(msg => {
+                if (msg.sender === 'bot') {
+                    chatBox.innerHTML += `
+                        <div class="bg-white p-2.5 rounded-lg border border-fisterra-border text-fisterra-charcoal">
+                            <span class="text-fisterra-navy font-semibold block text-[10px]">Asistente WhatsApp IA:</span>
+                            ${msg.text}
+                        </div>
+                    `;
+                } else {
+                    chatBox.innerHTML += `
+                        <div class="bg-sky-50 p-2.5 rounded-lg border border-sky-200 text-fisterra-navy ml-4 text-right">
+                            <span class="text-fisterra-cyan font-semibold block text-[10px]">${record.name}:</span>
+                            ${msg.text}
+                        </div>
+                    `;
+                }
+            });
+
+            // Render Audit Timeline
+            renderModalAuditTimeline(record);
+
+            document.getElementById('expedienteModal').classList.remove('hidden');
+            lucide.createIcons();
+        }
+
+        function previewDoc(recordId, docIdx) {
+            const record = recordsDatabase.find(r => r.id === recordId);
+            const doc = record.docs[docIdx];
+            document.getElementById('docPreviewTitle').innerText = `Visor Seguro // ${doc.name} (${doc.code})`;
+            document.getElementById('docPreviewContent').innerText = `Titular: ${record.name} | CURP/RFC: ${record.curpRfc}\nResultado Validación Automática: ${doc.detail}\nSello Digital PostgreSQL: SHA256-VERIFIED-2026`;
+            document.getElementById('docPreviewBox').classList.remove('hidden');
+        }
+
+        function renderModalAuditTimeline(record) {
+            const auditBox = document.getElementById('modalAuditTimeline');
+            auditBox.innerHTML = '';
+            record.audit.forEach(item => {
+                auditBox.innerHTML += `
+                    <div class="border-l-2 border-fisterra-emerald pl-2.5 py-0.5">
+                        <div class="flex justify-between text-[10px] text-slate-500">
+                            <span>${item.time}</span>
+                            <span class="text-fisterra-navy font-semibold">${item.user}</span>
+                        </div>
+                        <p class="text-fisterra-charcoal mt-0.5 font-medium">${item.action}</p>
+                    </div>
+                `;
+            });
+        }
+
+        function changeWorkerStatus(newStatus) {
+            const record = recordsDatabase.find(r => r.id === selectedRecordId);
+            if (!record) return;
+
+            const currentUser = document.getElementById('userNameLabel').innerText;
+            const now = new Date();
+            const timeStr = `Hoy ${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')}`;
+
+            record.status = newStatus;
+            record.audit.unshift({
+                time: timeStr,
+                action: `Estatus actualizado a "${newStatus}"`,
+                user: currentUser
+            });
+
+            document.getElementById('modalStatus').innerText = newStatus;
+            renderModalAuditTimeline(record);
+            renderExpedienteTable();
+            renderTalentPool();
+            showToast(`Auditoría registrada: ${record.name} ahora está "${newStatus}"`);
+        }
+
+        function closeModal() {
+            document.getElementById('expedienteModal').classList.add('hidden');
+        }
+
+        // ==================== MODULE C: "LA JOYA" SUBCONTRACTORS ====================
+        function authenticateSubcontractor() {
+            activeSubCompany = document.getElementById('loginSubCompany').value;
+            subAuthenticated = true;
+            activateSubcontractorSession();
+            showToast(`Sesión iniciada como ${activeSubCompany}`);
+        }
+
+        function activateSubcontractorSession() {
+            document.getElementById('subcontractorLoginGate').classList.add('hidden');
+            document.getElementById('subcontractorWorkspace').classList.remove('hidden');
+            document.getElementById('btnLogoutSub').classList.remove('hidden');
+            document.getElementById('userNameLabel').innerText = activeSubCompany;
+            document.getElementById('userRoleLabel').innerText = "Subcontratista Autorizado (La Joya)";
+            document.getElementById('userAvatar').innerText = "SC";
+            document.getElementById('activeSubCompanyLabel').innerText = `Empresa Conectada: ${activeSubCompany}`;
+            document.getElementById('reqSubName').value = activeSubCompany;
+            renderTalentPool();
+            renderSubRequests();
+        }
+
+        function logoutSubcontractor() {
+            logout();
+        }
+
+        function renderTalentPool() {
+            const grid = document.getElementById('talentPoolGrid');
+            const tradeFilter = document.getElementById('subTradeFilter')?.value || 'todos';
+            grid.innerHTML = '';
+
+            const aptoWorkers = recordsDatabase.filter(r => {
+                const isWorker = r.type === 'Trabajador';
+                const isApto = r.status === 'Apto';
+                const matchProject = currentProject === 'todos' || r.projectKey === currentProject;
+                const matchTrade = tradeFilter === 'todos' || r.trade.toLowerCase().includes(tradeFilter.toLowerCase());
+                return isWorker && isApto && matchProject && matchTrade;
+            });
+
+            document.getElementById('aptoCountLabel').innerText = `${aptoWorkers.length} trabajadores "Apto" disponibles`;
+
+            if (aptoWorkers.length === 0) {
+                grid.innerHTML = `<div class="col-span-full bg-fisterra-mist border border-fisterra-border p-8 rounded-xl text-center text-xs text-slate-500">No hay trabajadores en estatus "Apto" disponibles para este filtro en este momento.</div>`;
+                return;
+            }
+
+            aptoWorkers.forEach(w => {
+                grid.innerHTML += `
+                    <div class="bg-white border border-fisterra-border hover:border-fisterra-cyan p-5 rounded-xl flex flex-col justify-between space-y-4 transition-all shadow-sm">
+                        <div class="flex items-start justify-between">
+                            <div>
+                                <span class="bg-emerald-50 text-emerald-800 text-[10px] font-semibold px-2 py-0.5 rounded border border-emerald-200">Estatus: Apto (SAT/RENAPO OK)</span>
+                                <h4 class="text-base font-bold text-fisterra-navy mt-2">${w.trade}</h4>
+                                <p class="text-xs text-slate-500">${w.project}</p>
+                            </div>
+                            <div class="w-10 h-10 rounded-lg bg-fisterra-mist border border-fisterra-border flex items-center justify-center text-fisterra-navy">
+                                <i data-lucide="hard-hat" class="w-5 h-5"></i>
+                            </div>
+                        </div>
+                        <div class="bg-fisterra-mist p-3 rounded-lg border border-fisterra-border text-[11px] space-y-1 text-fisterra-slateText tabular-nums">
+                            <p class="text-fisterra-navy font-semibold">Candado PII "La Joya" Activo</p>
+                            <p>• Nombre: ${w.name.split(' ')[0]} ${w.name.split(' ')[1]?.charAt(0) || ''}***</p>
+                            <p>• Teléfono: [Protegido por Fisterra]</p>
+                            <p>• CURP: ${w.curpRfc.substring(0,4)}**********</p>
+                        </div>
+                        <button onclick="openRequestModalWithPreset('${w.project}', '${w.trade}')" class="w-full py-2.5 bg-fisterra-cyan hover:bg-sky-700 text-white font-semibold text-xs rounded-lg flex items-center justify-center gap-2 transition-all">
+                            <i data-lucide="user-plus" class="w-4 h-4"></i> Solicitar Personal
+                        </button>
+                    </div>
+                `;
+            });
+            lucide.createIcons();
+        }
+
+        function openRequestModal() {
+            document.getElementById('reqSubName').value = activeSubCompany;
+            document.getElementById('requestModal').classList.remove('hidden');
+        }
+
+        function openRequestModalWithPreset(project, trade) {
+            document.getElementById('reqSubName').value = activeSubCompany;
+            const projSelect = document.getElementById('reqProject');
+            for (let opt of projSelect.options) {
+                if (project.includes(opt.value.split(' ')[0])) projSelect.value = opt.value;
+            }
+            const tradeSelect = document.getElementById('reqTrade');
+            for (let opt of tradeSelect.options) {
+                if (trade.toLowerCase().includes(opt.value.toLowerCase())) tradeSelect.value = opt.value;
+            }
+            document.getElementById('requestModal').classList.remove('hidden');
+        }
+
+        function closeRequestModal() {
+            document.getElementById('requestModal').classList.add('hidden');
+        }
+
+        function submitPersonnelRequest() {
+            const subName = document.getElementById('reqSubName').value;
+            const project = document.getElementById('reqProject').value;
+            const trade = document.getElementById('reqTrade').value;
+            const qty = parseInt(document.getElementById('reqQty').value) || 1;
+            const date = document.getElementById('reqDate').value;
+
+            const matchingAptos = recordsDatabase.filter(r =>
+                r.type === 'Trabajador' &&
+                r.status === 'Apto' &&
+                r.trade.toLowerCase().includes(trade.toLowerCase())
+            ).slice(0, qty);
+
+            const assignedNames = matchingAptos.length > 0
+                ? matchingAptos.map(w => w.name).join(', ')
+                : `${qty} vacante(s) en cola de asignación`;
+
+            const newStatusText = `En proceso de contratación por ${subName}`;
+            const now = new Date();
+            const timeStr = `Hoy ${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')}`;
+
+            matchingAptos.forEach(w => {
+                w.status = newStatusText;
+                w.audit.unshift({
+                    time: timeStr,
+                    action: `Estatus cambiado a "${newStatusText}" (Ingreso: ${date})`,
+                    user: subName
+                });
+            });
+
+            const folio = "SOL-" + Math.floor(402 + Math.random() * 500);
+            subRequests.unshift({
+                id: folio,
+                subCompany: subName,
+                project: project,
+                trade: trade,
+                qty: qty,
+                date: date,
+                workersNames: assignedNames,
+                status: "Pendiente Aprobación Fisterra"
+            });
+
+            notifications.unshift({
+                id: Date.now(),
+                title: `Nueva Solicitud (${folio}): ${subName}`,
+                desc: `Solicita ${qty} ${trade}(s) en ${project} para ${date}. Notificado a Amellaly/Hilario.`,
+                time: "Ahora mismo",
+                unread: true,
+                reqId: folio
+            });
+
+            renderSubRequests();
+            renderTalentPool();
+            renderExpedienteTable();
+            renderNotifications();
+            closeRequestModal();
+            showToast(`Solicitud ${folio} enviada. Notificado a Amellaly/Hilario y estatus actualizado.`);
+        }
+
+        function renderSubRequests() {
+            const tbody = document.getElementById('subRequestsTableBody');
+            tbody.innerHTML = '';
+
+            subRequests.forEach(r => {
+                const isApproved = r.status === 'Aprobado por Fisterra';
+                const badgeClass = isApproved
+                    ? 'bg-emerald-50 text-emerald-800 border border-emerald-300'
+                    : 'bg-amber-50 text-amber-800 border border-amber-300';
+
+                const approveBtn = (!isApproved && currentRole !== 'subcontratista')
+                    ? `<button onclick="approveSubRequest('${r.id}')" class="px-2.5 py-1 bg-fisterra-navy hover:bg-fisterra-navyLight text-white rounded-lg text-[11px] font-semibold">Aprobar (Fisterra)</button>`
+                    : `<span class="text-[11px] text-slate-500">Registrado en Sistema</span>`;
+
+                tbody.innerHTML += `
+                    <tr>
+                        <td class="p-3 font-semibold text-fisterra-navy tabular-nums">${r.id}</td>
+                        <td class="p-3 font-semibold text-fisterra-navy">${r.subCompany}</td>
+                        <td class="p-3 text-fisterra-slateText">${r.project} • <span class="text-fisterra-cyan font-semibold">${r.trade}</span></td>
+                        <td class="p-3 tabular-nums">${r.qty} pers. (${r.date})</td>
+                        <td class="p-3 text-fisterra-slateText">${r.workersNames}</td>
+                        <td class="p-3"><span class="px-2 py-0.5 rounded-full text-[10px] font-semibold ${badgeClass}">${r.status}</span></td>
+                        <td class="p-3 text-right">${approveBtn}</td>
+                    </tr>
+                `;
+            });
+        }
+
+        function approveSubRequest(folio) {
+            const req = subRequests.find(r => r.id === folio);
+            if (!req) return;
+            req.status = 'Aprobado por Fisterra';
+            renderSubRequests();
+            showToast(`Solicitud ${folio} aprobada por Dirección Fisterra.`);
+        }
+
+        // ==================== NOTIFICATIONS & NAVIGATION ====================
+        function toggleNotificationsPanel() {
+            const panel = document.getElementById('notificationsPanel');
+            panel.classList.toggle('hidden');
+        }
+
+        function renderNotifications() {
+            const list = document.getElementById('notificationsList');
+            const badge = document.getElementById('notifBadgeCount');
+            badge.innerText = notifications.length;
+            list.innerHTML = '';
+
+            notifications.forEach(n => {
+                list.innerHTML += `
+                    <div class="p-3 hover:bg-fisterra-mist transition-colors space-y-1">
+                        <div class="flex items-center justify-between">
+                            <span class="font-semibold text-fisterra-navy text-[11px]">${n.title}</span>
+                            <span class="text-[10px] text-slate-400">${n.time}</span>
+                        </div>
+                        <p class="text-fisterra-slateText text-[11px]">${n.desc}</p>
+                        ${n.reqId ? `<button onclick="switchTab('subcontratistas'); toggleNotificationsPanel();" class="text-fisterra-cyan hover:underline text-[10px] font-semibold mt-1">Ir a aprobar solicitud ➔</button>` : ''}
+                    </div>
+                `;
+            });
+        }
+
+        function switchTab(tabId) {
+            ['dashboard', 'expediente', 'subcontratistas'].forEach(t => {
+                document.getElementById(`tab-${t}`).classList.add('hidden');
+                const navBtn = document.getElementById(`nav-${t}`);
+                if (navBtn) {
+                    navBtn.className = "nav-btn w-full flex items-center space-x-3 px-3 py-2.5 rounded-lg text-xs font-medium text-fisterra-slateText hover:bg-slate-200/70 hover:text-fisterra-navy transition-all";
+                    const icon = navBtn.querySelector('i');
+                    if (icon) icon.classList.remove('text-fisterra-emerald');
+                }
+            });
+            document.getElementById(`tab-${tabId}`).classList.remove('hidden');
+            const activeBtn = document.getElementById(`nav-${tabId}`);
+            if (activeBtn) {
+                activeBtn.className = "nav-btn w-full flex items-center space-x-3 px-3 py-2.5 rounded-lg text-xs font-semibold transition-all bg-fisterra-navy text-white shadow-sm";
+                const icon = activeBtn.querySelector('i');
+                if (icon) icon.classList.add('text-fisterra-emerald');
+            }
+            lucide.createIcons();
+        }
+
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            document.getElementById('toastMessage').innerText = message;
+            toast.classList.remove('translate-y-24', 'opacity-0');
+            setTimeout(() => {
+                toast.classList.add('translate-y-24', 'opacity-0');
+            }, 3500);
+        }
+
+        // INITIALIZE CHARTS (Corporate Fisterra Energy Palette)
+        function initCharts() {
+            const ctxDonut = document.getElementById('statusDonutChart').getContext('2d');
+            statusChartInstance = new Chart(ctxDonut, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Aptos', 'Pendientes', 'Contratados', 'Rechazados'],
+                    datasets: [{
+                        data: [1944, 512, 682, 109],
+                        backgroundColor: ['#00A878', '#D97706', '#0A192F', '#DC2626'],
+                        borderWidth: 2,
+                        borderColor: '#FFFFFF'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    cutout: '72%'
+                }
+            });
+
+            const ctxBar = document.getElementById('tradesBarChart').getContext('2d');
+            tradesChartInstance = new Chart(ctxBar, {
+                type: 'bar',
+                data: {
+                    labels: ['Albañilería', 'Soldadura', 'Electricidad', 'Operador Maq.', 'Seguridad'],
+                    datasets: [{
+                        label: 'Registros',
+                        data: [980, 560, 420, 380, 505],
+                        backgroundColor: '#0A192F',
+                        hoverBackgroundColor: '#0077B6',
+                        borderRadius: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        x: { grid: { display: false }, ticks: { color: '#334155', font: { size: 10, family: 'Plus Jakarta Sans' } } },
+                        y: { grid: { color: '#E2E8F0' }, ticks: { color: '#334155', font: { size: 10, family: 'Plus Jakarta Sans' } } }
+                    }
+                }
+            });
+
+            const ctxLine = document.getElementById('registrationsLineChart').getContext('2d');
+            lineChartInstance = new Chart(ctxLine, {
+                type: 'line',
+                data: {
+                    labels: ['Sem 1', 'Sem 2', 'Sem 3', 'Sem 4', 'Sem 5', 'Sem 6'],
+                    datasets: [{
+                        label: 'Registros Bot WhatsApp',
+                        data: [320, 680, 1120, 1690, 2240, 2845],
+                        borderColor: '#00A878',
+                        backgroundColor: 'rgba(0, 168, 120, 0.08)',
+                        borderWidth: 2.5,
+                        pointBackgroundColor: '#0A192F',
+                        fill: true,
+                        tension: 0.35
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        x: { grid: { display: false }, ticks: { color: '#334155', font: { size: 10, family: 'Plus Jakarta Sans' } } },
+                        y: { grid: { color: '#E2E8F0' }, ticks: { color: '#334155', font: { size: 10, family: 'Plus Jakarta Sans' } } }
+                    }
+                }
+            });
+        }
+    </script>
+</body>
+</html>
